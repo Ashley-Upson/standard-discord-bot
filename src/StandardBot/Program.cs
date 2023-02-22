@@ -8,7 +8,6 @@ using Microsoft.Extensions.Hosting;
 using Newtonsoft.Json;
 using StandardBot;
 using StandardBot.Modules;
-using System.Reflection;
 
 public class Program
 {
@@ -25,13 +24,10 @@ public class Program
             .Build();
 
         await StandardModule.Standard.Download();
-        var theFuckingStandard = await StandardModule.Standard.GetTableOfContents();
-        var theStandardMeta = theFuckingStandard
-            .Where(s => s.FilePath == "The-Standard-master/0. Introduction/0.0 The Theory.md")
-            .ToArray();
+        //var searchResults = (await StandardModule.Standard.GetTableOfContents())
+        //    .Where(i => i.FilePath == "The-Standard-master/1. Brokers/1. Brokers.md");
 
-        foreach(var line in theStandardMeta.First().Content.Split("\n"))
-            Console.WriteLine(line);
+        //Console.WriteLine(JsonConvert.SerializeObject(searchResults, Formatting.Indented));
 
         await program.BuildHost(config);
     }

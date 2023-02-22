@@ -54,38 +54,41 @@ public class TheStandard
     {
         var fileContents = new StreamReader(standardFile.Open()).ReadToEnd();
         var lines = fileContents.Split("\n").ToList();
-
-        var fileEntry = new StandardToCEntry
-        {
-            Title = standardFile.Name,
-            FilePath = standardFile.FullName, 
-            Link = "https://github.com/hassanhabib/The-Standard/blob/master/" + standardFile.FullName.Replace("The-Standard-master/", ""),
-            Content = fileContents.Trim()
-        };
-
-        var sectionHeaders = lines.Where(l => l.StartsWith("#"));
-
-        return new StandardToCEntry[] { fileEntry }
-            .Union(
-                sectionHeaders.Select(sectionHeader =>
-                {
-                    var headerLineIndex = lines.FindIndex(l => l == sectionHeader);
-                    var lastLineIndex = lines.FindIndex(headerLineIndex + 1, l => l.StartsWith("#")) - 2;
-
-                    if (lastLineIndex == -2)
-                        lastLineIndex = lines.Count;
-
-                    return new StandardToCEntry
-                    {
-                        Title = sectionHeader,
-                        FilePath = standardFile.FullName,
-                        Link = "https://github.com/hassanhabib/The-Standard/blob/master/" + standardFile.FullName.Replace("The-Standard-master/", ""),
-                        Content = GetContentSection(lines, headerLineIndex, lastLineIndex)
-                    };
-                })
-            );
+        return Split(lines, standardFile.FullName);
     }
 
     string GetContentSection(IEnumerable<string> lines, int from, int to) =>
-        string.Join("\n", lines.Skip(from).Take(to)).Trim();
+        string.Join("\n", lines.Skip(from).Take(from - to)).Trim();
+
+    public static StandardToCEntry[] Split(IEnumerable<string> lines, string path)
+    {
+        var sections = new List<StandardToCEntry>();
+        StandardToCEntry currentSection = null;
+
+        foreach (var line in lines)
+        {
+            if (line.StartsWith("#"))
+            {
+                if(currentSection is not null)
+                    sections.Add(currentSection);
+
+                currentSection = new StandardToCEntry
+                {
+                    Title = line,
+                    FilePath = path,
+                    Link = $"https://github.com/hassanhabib/The-Standard/blob/master/{path.Replace("The-Standard-master/", "")}".Replace(" ", "%20"),
+                    Content = ""
+                };
+            }
+            else
+            {
+                // Add the line to the current section
+                currentSection.Content += $"{line}\n";
+            }
+        }
+
+        sections.Add(currentSection);
+
+        return sections.ToArray();
+    }
 }
