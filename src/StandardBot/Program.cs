@@ -5,6 +5,7 @@ using Discord.WebSocket;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Newtonsoft.Json;
 using StandardBot;
 using StandardBot.Modules;
 using System.Reflection;
@@ -24,6 +25,14 @@ public class Program
             .Build();
 
         await StandardModule.Standard.Download();
+        var theFuckingStandard = await StandardModule.Standard.GetTableOfContents();
+        var theStandardMeta = theFuckingStandard
+            .Where(s => s.FilePath == "The-Standard-master/0. Introduction/0.0 The Theory.md")
+            .ToArray();
+
+        foreach(var line in theStandardMeta.First().Content.Split("\n"))
+            Console.WriteLine(line);
+
         await program.BuildHost(config);
     }
 

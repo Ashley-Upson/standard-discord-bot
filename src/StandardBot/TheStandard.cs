@@ -44,62 +44,48 @@ public class TheStandard
         }
     }
 
-    StandardToCEntry[] Parse(ZipArchive standardZip)
+    StandardToCEntry[] Parse(ZipArchive standardZip) =>
+        standardZip.Entries
+            .Where(e => e.Name.EndsWith(".md"))
+            .SelectMany(GetContentFor)
+            .ToArray();
+
+    IEnumerable<StandardToCEntry> GetContentFor(ZipArchiveEntry standardFile)
     {
-        foreach (ZipArchiveEntry entry in standardZip.Entries)
+        var fileContents = new StreamReader(standardFile.Open()).ReadToEnd();
+        var lines = fileContents.Split("\n").ToList();
+
+        var fileEntry = new StandardToCEntry
         {
-            Console.WriteLine(entry.FullName);
-            if (entry.FullName == "The-Standard-master/README.md")
-            {
-                using (var stream = entry.Open())
-                using (var reader = new StreamReader(stream))
+            Title = standardFile.Name,
+            FilePath = standardFile.FullName, 
+            Link = "https://github.com/hassanhabib/The-Standard/blob/master/" + standardFile.FullName.Replace("The-Standard-master/", ""),
+            Content = fileContents.Trim()
+        };
+
+        var sectionHeaders = lines.Where(l => l.StartsWith("#"));
+
+        return new StandardToCEntry[] { fileEntry }
+            .Union(
+                sectionHeaders.Select(sectionHeader =>
                 {
-                    return reader.ReadToEnd()
-                        .Split("\n")
-                        .Skip(6)
-                        .Select(l => l.Trim())
-                        .Where(l => l.Length > 0 && !l.StartsWith("##"))
-                        .Select(l => new StandardToCEntry
-                        {
-                            Title = l.Split('(')[0].Replace("- ", "").Trim("[]".ToArray()),
-                            Link = l.Split('(')[1].Split(')')[0]
-                        })
-                        .Select(i =>
-                        {
-                            i.ContentReference = i.Link.Replace("https://github.com/hassanhabib/The-Standard/blob/master/", "").Replace("%20", " ");
-                            i.FilePath = i.ContentReference.Split("#")[0].Replace("%20", " ");
-                            i.Content = GetContentFor(standardZip.Entries.FirstOrDefault(e => e.FullName == $"The-Standard-master/{i.FilePath}"), i.ContentReference);
-                            return i;
-                        })
-                        .ToArray();
-                }
-            }
-        }
+                    var headerLineIndex = lines.FindIndex(l => l == sectionHeader);
+                    var lastLineIndex = lines.FindIndex(headerLineIndex + 1, l => l.StartsWith("#")) - 2;
 
-        return Array.Empty<StandardToCEntry>();
+                    if (lastLineIndex == -2)
+                        lastLineIndex = lines.Count;
+
+                    return new StandardToCEntry
+                    {
+                        Title = sectionHeader,
+                        FilePath = standardFile.FullName,
+                        Link = "https://github.com/hassanhabib/The-Standard/blob/master/" + standardFile.FullName.Replace("The-Standard-master/", ""),
+                        Content = GetContentSection(lines, headerLineIndex, lastLineIndex)
+                    };
+                })
+            );
     }
-    string GetContentFor(ZipArchiveEntry standardChapterEntry, string contentReference)
-    {
-        if (standardChapterEntry is null)
-            return null;
 
-        var refParts = contentReference.Split("#");
-
-        if (refParts.Length == 2)
-        {
-            var sectionHeader = "# " + refParts[1].Replace("-", " ").ToLowerInvariant();
-            var allContent = new StreamReader(standardChapterEntry.Open()).ReadToEnd();
-
-            List<string> lines = allContent.Split('\n').ToList();
-            var headerLineIndex = lines.FindIndex(l => l.Replace(".", "").ToLowerInvariant() == sectionHeader);
-            var lastLineIndex = lines.FindIndex(headerLineIndex + 1, l => l.StartsWith("#")) -1;
-
-            if (lastLineIndex == -2)
-                lastLineIndex = allContent.Length;
-
-            return string.Join("\n", lines.Where(l => l.Length > 0).Skip(headerLineIndex).Take(lastLineIndex - headerLineIndex));
-        }
-        else
-            return new StreamReader(standardChapterEntry.Open()).ReadToEnd();
-    }
+    string GetContentSection(IEnumerable<string> lines, int from, int to) =>
+        string.Join("\n", lines.Skip(from).Take(to)).Trim();
 }
