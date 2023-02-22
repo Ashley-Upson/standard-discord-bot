@@ -1,4 +1,5 @@
-﻿using Discord.Interactions;
+﻿using Discord;
+using Discord.Interactions;
 
 namespace StandardBot.Modules
 {
@@ -8,43 +9,52 @@ namespace StandardBot.Modules
 
         public InteractionService Commands { get; set; }
 
-        // Basic slash command. [SlashCommand("name", "description")]
-        // Similar to text command creation, and their respective attributes
-        [SlashCommand("standardping", "Receive a pong!")]
-        public async Task StandardPing()
-        {
-            // Respond to the user
-            await RespondAsync("pong");
-        }
-
-        [SlashCommand("greet", "say hello to the caller!")]
-        public async Task Greet()
-        {
-            // Respond to the user
-            await RespondAsync($"Hello {Context.User.Username}");
-        }
-
-        [SlashCommand("search", "say hello to the caller!")]
+        [SlashCommand("search", "search the standard")]
         public async Task Search(string term)
         {
-            var contents = await Standard.SearchAsync(term);
-
-            if (contents.Length == 0)
-                await RespondAsync("Have you read the standard at all, it doesn't seem to mention that!");
-            else 
+            try
             {
-                var response = string.Join("\n", contents.Select(c => FormatContent(c, contents.Length == 1)));
+                var results = await Standard.SearchAsync(term);
 
-                if (response.Length > 2000)
-                    response = response[..1997] + "...";
+                if (results.Length == 0)
+                    await RespondAsync("Have you read the standard at all, it doesn't seem to mention that!");
+                else
+                {
+                    var response = string.Join("\n", results.Select(c => FormatContent(c, results.Length == 1)));
 
-                await RespondAsync(response);
+                    if (response.Length > 2000)
+                        response = response[..1997] + "...";
+
+                    var messages = results
+                        .SelectMany(r => FormatContent(r, results.Length == 1))
+                        .ToArray();
+
+                    await RespondAsync(messages.First());
+
+                    foreach (var followUp in messages.Skip(1))
+                    {
+                        await Task.Delay(200);
+                        await FollowupAsync(followUp);
+                    }
+                }
+            }
+            catch (Exception ex) 
+            { 
+                Console.WriteLine(ex.Message);
             }
         }
 
-        string FormatContent(StandardToCEntry content, bool returnFullContent) =>
-            returnFullContent
-                ? $"{content.Title} - {content.Link}\n{content.Content}"
-                : $"{content.Title} - {content.Link}";
+        string[] FormatContent(StandardToCEntry content, bool returnFullContent)
+        {
+            if (!returnFullContent)
+                return new[] { content.Title, content.Link };
+
+            var contentParts = content.Content.Split("[[IMAGE]]");
+
+            return new[] { content.Title, content.Link }
+                .Union(contentParts)
+                .ToArray();
+                
+        }
     }
 }

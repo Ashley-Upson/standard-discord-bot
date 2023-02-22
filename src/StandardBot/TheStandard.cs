@@ -2,7 +2,7 @@
 
 public class TheStandard
 {
-    StandardToCEntry[]? toc = null;
+    StandardToCEntry[] toc = null;
 
     public async Task<StandardToCEntry[]> SearchAsync(string searchTerm)
     {
@@ -22,8 +22,6 @@ public class TheStandard
        
         return toc;
     }
-
-
 
     public async Task<Stream> Download()
     {
@@ -48,6 +46,7 @@ public class TheStandard
         standardZip.Entries
             .Where(e => e.Name.EndsWith(".md"))
             .SelectMany(GetContentFor)
+            .Select(ProcessImages)
             .ToArray();
 
     IEnumerable<StandardToCEntry> GetContentFor(ZipArchiveEntry standardFile)
@@ -56,9 +55,6 @@ public class TheStandard
         var lines = fileContents.Split("\n").ToList();
         return Split(lines, standardFile.FullName);
     }
-
-    string GetContentSection(IEnumerable<string> lines, int from, int to) =>
-        string.Join("\n", lines.Skip(from).Take(from - to)).Trim();
 
     public static StandardToCEntry[] Split(IEnumerable<string> lines, string path)
     {
@@ -76,7 +72,8 @@ public class TheStandard
                 {
                     Title = line,
                     FilePath = path,
-                    Link = $"https://github.com/hassanhabib/The-Standard/blob/master/{path.Replace("The-Standard-master/", "")}".Replace(" ", "%20"),
+                    Link = $"https://github.com/hassanhabib/The-Standard/blob/master/{path.Replace("The-Standard-master/", "")}"
+                        .Replace(" ", "%20"),
                     Content = ""
                 };
             }
@@ -90,5 +87,16 @@ public class TheStandard
         sections.Add(currentSection);
 
         return sections.ToArray();
+    }
+
+    StandardToCEntry ProcessImages(StandardToCEntry entry)
+    {
+        entry.Content = entry.Content
+            .Replace("\n<br />\n", "")
+            .Replace("    <p align=\"center\" >", "")
+            .Replace("<img src=\"", "[[IMAGE]]")
+            .Replace("\" />", "");
+
+        return entry;
     }
 }
