@@ -96,7 +96,7 @@ public class Program
 
         await discordClient.LoginAsync(
             TokenType.Bot, 
-            Environment.GetEnvironmentVariable("StandardBotToken", EnvironmentVariableTarget.Machine)
+            Environment.GetEnvironmentVariable("StandardBotToken", EnvironmentVariableTarget.Process)
         );
 
         await discordClient.StartAsync();

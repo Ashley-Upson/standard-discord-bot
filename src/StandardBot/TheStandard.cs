@@ -1,4 +1,5 @@
 ﻿using System.IO.Compression;
+using Discord;
 
 public class TheStandard
 {
@@ -81,14 +82,84 @@ public class TheStandard
                 };
             }
             else
-            {
-                // Add the line to the current section
                 currentSection.Content += $"{line}\n";
-            }
         }
 
         sections.Add(currentSection);
 
         return sections.ToArray();
+    }
+
+    public List<StandardEmbedItem> PrepareContentForEmbed(string content)
+    {
+        List<StandardEmbedItem> items = null;
+
+        foreach(string item in content.Split("\n").ToArray())
+        {
+            var type = item.Contains("<") && item.Contains(">")
+                ? (item.Contains("img") ? "image" : "html")
+                : "text";
+
+            var itemContent = "";
+
+            if (type == "image")
+            {
+                var httpStart = item.IndexOf("http");
+                var endQuote = item.IndexOf('"', httpStart);
+                itemContent = item.Substring(httpStart, (endQuote - httpStart));
+            } else if (type == "text")
+                itemContent = item;
+            
+            items.Add(new StandardEmbedItem
+            {
+                Type = type,
+                Content = itemContent
+            });
+        }
+        
+        return items;
+    }
+    
+    public Embed[] BuildEmbedResponse(StandardToCEntry[] contents)
+    {
+        List<Embed> embeds = null;
+
+        if (contents.Length == 1)
+        {
+            var content = contents[0];
+
+            embeds.Add(new EmbedBuilder().WithTitle(content.Title).WithDescription(content.Link).Build());
+            
+            // embedBuilder.WithTitle(content.Title);
+            // embedBuilder.WithDescription(content.Link);
+            // embedBuilder.WithImageUrl(item.Content);
+            // embedBuilder.AddField("More Text", item.Content);
+
+            foreach (var item in PrepareContentForEmbed(content.Content))
+            {
+                if (item.Type == "image")
+                    embeds.Add(new EmbedBuilder().WithImageUrl(item.Content).Build());
+                else
+                {
+                    embeds.Add(new EmbedBuilder().WithDescription(item.Content).Build());
+                }
+            }
+        }
+        else
+        {
+            embeds.Add(new EmbedBuilder().WithTitle("Here are the results I found for your search:").Build());
+            // embedBuilder.WithTitle();
+            
+            foreach (var content in contents)
+            {
+                embeds.Add(new EmbedBuilder().WithDescription(content.Title).Build());
+                embeds.Add(new EmbedBuilder().WithUrl(content.Link).Build());
+                // embedBuilder.AddField("More Text", content.Title);
+                // embedBuilder.WithUrl(content.Link);
+            }
+        }
+
+
+        return embeds.ToArray();
     }
 }

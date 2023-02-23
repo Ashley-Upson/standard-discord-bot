@@ -1,4 +1,6 @@
-﻿using Discord.Interactions;
+﻿using Discord;
+using Discord.Interactions;
+using Newtonsoft.Json;
 
 namespace StandardBot.Modules
 {
@@ -29,16 +31,32 @@ namespace StandardBot.Modules
         {
             var contents = await Standard.SearchAsync(term);
 
-            if (contents.Length == 0)
+            if (term.ToLower().Contains("php"))
+                await RespondAsync("Go away Ash!");
+            else if (contents.Length == 0)
                 await RespondAsync("Have you read the standard at all, it doesn't seem to mention that!");
-            else 
+            else
             {
-                var response = string.Join("\n", contents.Select(c => FormatContent(c, contents.Length == 1)));
+                Console.WriteLine("Building embed");
+                var embeds = Standard.BuildEmbedResponse(contents);
+                Console.WriteLine("Built");
 
-                if (response.Length > 2000)
-                    response = response[..1997] + "...";
+                await RespondAsync("Here are the results I found:");
+                
+                foreach (var embed in embeds)
+                {
+                    await Task.Delay(200);
+                    await FollowupAsync(embed: embed);
+                }
+                
+                // await RespondAsync(embeds: embeds);
 
-                await RespondAsync(response);
+                // var response = string.Join("\n", contents.Select(c => FormatContent(c, contents.Length == 1)));
+
+                // if (response.Length > 2000)
+                // response = response[..1997] + "...";
+
+                // await RespondAsync(response);
             }
         }
 
